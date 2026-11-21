@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stars Wallet</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23eda100' d='M12 2l2.9 6.9 7.1.6-5.4 4.7 1.7 7.1L12 17.6 5.7 21.3l1.7-7.1L2 9.5l7.1-.6z'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4f3f0;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --border: #e3e2dd;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #8a8984;
+  --accent: #2a78d6;
+  --star: #c98500;
+  --good: #0a7d0a;
+  --warn: #b26b00;
+  --bad: #d03b3b;
+  --grid: #e8e7e3;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b;
+    --text: #f0efec; --text-2: #c3c2b7; --muted: #8b8a82; --accent: #3987e5;
+    --star: #eda100; --good: #0ca30c; --warn: #fab219; --bad: #e66767; --grid: #2a2a27;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b;
+  --text: #f0efec; --text-2: #c3c2b7; --muted: #8b8a82; --accent: #3987e5;
+  --star: #eda100; --good: #0ca30c; --warn: #fab219; --bad: #e66767; --grid: #2a2a27;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 15px/1.5 Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 28px 16px 64px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
+.brand svg { width: 22px; height: 22px; color: var(--star); }
+.meta { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); display: inline-block; }
+.dot.stale { background: var(--warn); }
+button, .btn {
+  font: inherit; font-size: 13px; font-weight: 500; color: var(--text-2);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 12px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+}
+button:hover, .btn:hover { color: var(--text); border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); color: #fff; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+.tile { padding: 18px 20px; min-height: 124px; display: flex; flex-direction: column; }
+.tile .label { color: var(--text-2); font-size: 13px; font-weight: 500; }
+.tile .value { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin-top: 6px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tile .value small { font-size: 15px; font-weight: 500; color: var(--text-2); margin-left: 4px; }
+.tile .sub { color: var(--muted); font-size: 13px; margin-top: auto; padding-top: 6px; font-variant-numeric: tabular-nums; }
+.tile.hero .value { color: var(--text); }
+.tile.hero .value .s { color: var(--star); }
+
+.grid2 { display: grid; grid-template-columns: 340px 1fr; gap: 12px; margin-bottom: 12px; }
+.sect { padding: 20px; }
+.sect h2 { font-size: 15px; font-weight: 600; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+.qr { background: #fff; border-radius: 10px; padding: 12px; width: 184px; height: 184px; margin: 0 auto 14px; display: grid; place-items: center; }
+.qr svg, .qr img { width: 160px; height: 160px; display: block; }
+.addr {
+  font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12.5px; word-break: break-all;
+  background: var(--surface-2); border-radius: 8px; padding: 10px 12px; color: var(--text); margin-bottom: 10px;
+}
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > * { flex: 1; justify-content: center; }
+.note { margin-top: 14px; font-size: 12.5px; color: var(--text-2); background: var(--surface-2); border-radius: 8px; padding: 10px 12px; display: flex; gap: 8px; }
+.note svg { flex: none; width: 16px; height: 16px; color: var(--warn); margin-top: 1px; }
+
+.chart-box { position: relative; }
+.chart-box svg { display: block; width: 100%; height: 240px; overflow: visible; }
+.axis text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.bar { fill: var(--accent); }
+.hit { fill: transparent; cursor: default; }
+.hit:hover + .bar, .bar.on { filter: brightness(1.15); }
+.tip {
+  position: absolute; pointer-events: none; background: var(--text); color: var(--surface);
+  font-size: 12px; padding: 6px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -100%);
+  opacity: 0; transition: opacity .1s; font-variant-numeric: tabular-nums;
+}
+.tip b { font-weight: 600; }
+.empty { color: var(--muted); font-size: 14px; text-align: center; padding: 56px 0; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 12px; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); }
+
+#recent, #dailyTable { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 0 8px 8px; border-bottom: 1px solid var(--border); }
+td { padding: 9px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.r, th.r { text-align: right; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); }
+.pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+.pill.sent i { background: var(--warn); }
+.mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.mini div { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; }
+.mini span { display: block; color: var(--muted); font-size: 12px; }
+.mini b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.err { color: var(--bad); font-size: 13px; margin-bottom: 12px; display: none; }
+.skel { color: transparent !important; background: var(--surface-2); border-radius: 6px; }
+footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 24px; }
+
+@media (max-width: 900px) {
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .grid2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .tile { padding: 14px 16px; min-height: 108px; }
+  .tile .value { font-size: 24px; }
+  .mini b { font-size: 15px; }
+  .mini div { padding: 8px 10px; }
+  .hide-sm, .pill .t { display: none; }
+  td, th { padding-left: 6px; padding-right: 6px; }
+  .meta #upd { display: none; }
+  .brand { white-space: nowrap; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.7 7.1L12 17.6 5.7 21.3l1.7-7.1L2 9.5l7.1-.6z"/></svg>
+      Stars Wallet
+    </div>
+    <div class="meta">
+      <span><span class="dot" id="dot"></span> <span id="upd">загрузка…</span></span>
+      <button id="refresh" title="Обновить">↻</button>
+      <button id="theme" title="Тема">◐</button>
+    </div>
+  </header>
+
+  <div class="err" id="err"></div>
+
+  <section class="tiles">
+    <div class="card tile">
+      <div class="label">Баланс кошелька</div>
+      <div class="value skel" id="bal">0.00<small>TON</small></div>
+      <div class="sub" id="balUsd">&nbsp;</div>
+    </div>
+    <div class="card tile hero">
+      <div class="label">Хватит на</div>
+      <div class="value skel" id="afford"><span class="s">★</span> 0</div>
+      <div class="sub" id="price">&nbsp;</div>
+    </div>
+    <div class="card tile">
+      <div class="label">Выдано звёзд всего</div>
+      <div class="value skel" id="total">0</div>
+      <div class="sub" id="totalSub">&nbsp;</div>
+    </div>
+    <div class="card tile">
+      <div class="label">За 7 дней</div>
+      <div class="value skel" id="week">0</div>
+      <div class="sub" id="weekSub">&nbsp;</div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card sect">
+      <h2>Пополнение</h2>
+      <div class="qr" id="qr" aria-label="QR-код адреса"></div>
+      <div class="addr" id="addr">—</div>
+      <div class="row">
+        <button id="copy" type="button">Скопировать</button>
+        <a class="btn primary" id="open" href="#">Открыть в кошельке</a>
+      </div>
+      <div class="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <span>Только <b>TON в сети TON</b>. Не отправляй USDT или TON через другие сети (BSC, ETH) — так дешевле всего и без мостов.</span>
+      </div>
+    </div>
+
+    <div class="card sect">
+      <h2>
+        Выдача звёзд по дням, 30 дней
+        <span class="seg" role="group" aria-label="Вид">
+          <button type="button" data-view="chart" aria-pressed="true">График</button>
+          <button type="button" data-view="table" aria-pressed="false">Таблица</button>
+        </span>
+      </h2>
+      <div class="mini">
+        <div><span>Сегодня</span><b id="today">0</b></div>
+        <div><span>Заказов</span><b id="orders">0</b></div>
+        <div><span>Потрачено</span><b id="spent">0</b></div>
+      </div>
+      <div class="chart-box" id="chartBox">
+        <svg id="chart" role="img" aria-label="Звёзды, выданные за день"></svg>
+        <div class="tip" id="tip"></div>
+      </div>
+      <div id="dailyTable" hidden></div>
+    </div>
+  </section>
+
+  <section class="card sect">
+    <h2>Последние заказы</h2>
+    <div id="recent"><div class="empty">Пока нет заказов</div></div>
+  </section>
+
+  <footer>Цены — fragment.com · баланс — toncenter · обновляется раз в минуту</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d = 0) => Number(n).toLocaleString("ru-RU", { minimumFractionDigits: d, maximumFractionDigits: d });
+const MONTHS = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+const dayLabel = (ts) => { const d = new Date(ts * 1000); return d.getDate() + " " + MONTHS[d.getMonth()]; };
+const plural = (n, a, b, c) => { n = Math.abs(n) % 100; const m = n % 10; return n > 10 && n < 20 ? c : m > 1 && m < 5 ? b : m === 1 ? a : c; };
+
+// тема
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+$("theme").onclick = () => {
+  const dark = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() === "#111110";
+  const t = dark ? "light" : "dark";
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem("theme", t); } catch {}
+};
+
+let lastAddr = "";
+function renderAddress(addr) {
+  if (!addr || addr === lastAddr) return;
+  lastAddr = addr;
+  $("addr").textContent = addr;
+  $("open").href = "ton://transfer/" + addr;
+  if (window.qrcode) {
+    const q = qrcode(0, "M"); q.addData("ton://transfer/" + addr); q.make();
+    $("qr").innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+  }
+}
+$("copy").onclick = async () => {
+  try { await navigator.clipboard.writeText(lastAddr); $("copy").textContent = "Скопировано ✓"; }
+  catch { $("copy").textContent = "Не вышло"; }
+  setTimeout(() => ($("copy").textContent = "Скопировать"), 1500);
+};
+
+function renderChart(daily) {
+  const svg = $("chart"), tip = $("tip");
+  const W = svg.clientWidth || 600, H = 240, padL = 36, padB = 22, padT = 8;
+  const max = Math.max(0, ...daily.map((d) => d.stars));
+  if (!max) { svg.innerHTML = ""; svg.style.display = "none"; $("chartBox").querySelector(".empty")?.remove();
+    $("chartBox").insertAdjacentHTML("beforeend", '<div class="empty">Выдач за 30 дней ещё не было</div>'); return; }
+  svg.style.display = ""; $("chartBox").querySelector(".empty")?.remove();
+  const step = Math.pow(10, Math.floor(Math.log10(max))); const nice = Math.ceil(max / step) * step;
+  const ticks = [0, nice / 2, nice];
+  const iw = W - padL, ih = H - padB - padT, bw = iw / daily.length, gap = Math.max(2, bw * 0.28);
+  const y = (v) => padT + ih - (v / nice) * ih;
+  let s = '<g class="axis">';
+  ticks.forEach((t) => { s += `<line class="gridline" x1="${padL}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/><text x="${padL - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t)}</text>`; });
+  daily.forEach((d, i) => { const last = daily.length - 1; if ((i % 7 === 0 && last - i >= 4) || i === last) s += `<text x="${padL + i * bw + bw / 2}" y="${H - 4}" text-anchor="middle">${dayLabel(d.day)}</text>`; });
+  s += "</g>";
+  daily.forEach((d, i) => {
+    const x = padL + i * bw + gap / 2, w = bw - gap, h = Math.max(d.stars ? 2 : 0, (d.stars / nice) * ih), top = padT + ih - h, r = Math.min(4, w / 2, h);
+    const path = h ? `M${x},${padT + ih} V${top + r} Q${x},${top} ${x + r},${top} H${x + w - r} Q${x + w},${top} ${x + w},${top + r} V${padT + ih} Z` : "";
+    s += `<rect class="hit" data-i="${i}" x="${padL + i * bw}" y="${padT}" width="${bw}" height="${ih}"/>`;
+    s += `<path class="bar" d="${path}"/>`;
+  });
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+  svg.querySelectorAll(".hit").forEach((el) => {
+    el.onmouseenter = () => {
+      const d = daily[+el.dataset.i], x = +el.getAttribute("x") + bw / 2;
+      tip.innerHTML = `${dayLabel(d.day)} · <b>★ ${fmt(d.stars)}</b> · ${d.orders} ${plural(d.orders, "заказ", "заказа", "заказов")}`;
+      tip.style.left = (x / W) * 100 + "%"; tip.style.top = y(d.stars) - 6 + "px"; tip.style.opacity = 1;
+    };
+    el.onmouseleave = () => (tip.style.opacity = 0);
+  });
+  $("dailyTable").innerHTML = "<table><thead><tr><th>День</th><th class='r'>Звёзд</th><th class='r'>Заказов</th></tr></thead><tbody>" +
+    daily.slice().reverse().filter((d) => d.orders).map((d) => `<tr><td>${dayLabel(d.day)}</td><td class="r">${fmt(d.stars)}</td><td class="r">${d.orders}</td></tr>`).join("") + "</tbody></table>";
+}
+document.querySelectorAll(".seg button").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  const table = b.dataset.view === "table";
+  $("chartBox").hidden = table; $("dailyTable").hidden = !table;
+}));
+
+function renderRecent(rows) {
+  if (!rows.length) { $("recent").innerHTML = '<div class="empty">Пока нет заказов</div>'; return; }
+  $("recent").innerHTML = "<table><thead><tr><th>Когда</th><th>Что</th><th class='hide-sm'>Кому</th><th class='r'>Цена</th><th class='r'>Статус</th></tr></thead><tbody>" +
+    rows.map((r) => {
+      const d = new Date(r.at * 1000);
+      const when = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) + " " + d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+      const what = r.kind === "stars" ? "★ " + fmt(r.amount) : "Premium " + r.amount + " мес";
+      const st = r.status === "confirmed" ? '<span class="pill" title="выдано"><i></i><span class="t">выдано</span></span>' : '<span class="pill sent" title="отправлено, ждём подтверждения"><i></i><span class="t">отправлено</span></span>';
+      return `<tr><td>${when}</td><td>${what}</td><td class="hide-sm">@${r.user}</td><td class="r">${Number(r.price_ton).toLocaleString("ru-RU", { maximumFractionDigits: 3 })} TON</td><td class="r">${st}</td></tr>`;
+    }).join("") + "</tbody></table>";
+}
+
+let data = null;
+async function load() {
+  try {
+    const r = await fetch("/api/summary", { cache: "no-store" });
+    data = await r.json();
+  } catch (e) {
+    $("dot").classList.add("stale"); $("upd").textContent = "нет связи"; return;
+  }
+  document.querySelectorAll(".skel").forEach((el) => el.classList.remove("skel"));
+  renderAddress(data.address);
+
+  $("bal").innerHTML = data.balance_ton != null ? `${fmt(data.balance_ton, 2)}<small>TON</small>` : "—";
+  $("balUsd").textContent = data.balance_usd != null ? `≈ $${fmt(data.balance_usd, 2)} · 1 TON = $${fmt(data.ton_usd, 2)}` : "";
+  const n = data.stars_affordable;
+  $("afford").innerHTML = n != null ? `<span class="s">★</span> ${fmt(n)}` : "—";
+  $("price").textContent = data.ton_per_star ? `${fmt(data.price_50_ton, 3)} TON за 50 ★` + (data.usd_per_star ? ` · $${fmt(data.usd_per_star * 50, 2)}` : "") + (n != null && n < 50 ? " · пополни баланс" : "") : "";
+
+  const s = data.stats;
+  $("total").textContent = fmt(s.stars);
+  $("totalSub").textContent = s.premium_orders ? `+ Premium: ${s.premium_orders} шт, ${s.premium_months} мес` : `${s.orders} ${plural(s.orders, "заказ", "заказа", "заказов")}`;
+  $("week").textContent = fmt(s.week_stars);
+  $("weekSub").textContent = `сегодня ★ ${fmt(s.today_stars)}`;
+  $("today").textContent = fmt(s.today_stars);
+  $("orders").textContent = fmt(s.orders);
+  $("spent").textContent = fmt(s.spent_ton, 2) + " TON";
+  renderChart(s.daily);
+  renderRecent(s.recent);
+
+  const errs = data.errors || [];
+  $("err").style.display = errs.length ? "block" : "none";
+  $("err").textContent = errs.length ? "Часть данных недоступна: " + errs.join(", ") : "";
+  $("dot").classList.toggle("stale", errs.length > 0);
+  $("upd").textContent = "обновлено " + new Date(data.updated_at * 1000).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+$("refresh").onclick = load;
+window.addEventListener("resize", () => data && renderChart(data.stats.daily));
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>
