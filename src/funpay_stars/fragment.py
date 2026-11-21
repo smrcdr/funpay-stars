@@ -33,11 +33,19 @@ DEVICE = json.dumps(
 )
 
 PREMIUM_MONTHS = (3, 6, 12)
+# Способ оплаты на Fragment: ton (нативный TON — самая низкая комиссия), usdt_ton, usdt_bsc, usdt_tron...
+PAYMENT_METHOD = "ton"
 MIN_STARS = 50
 
 
 class FragmentError(RuntimeError):
     pass
+
+
+def _raw(addr: str) -> str:
+    from ton_core import Address
+
+    return Address(addr).to_str(is_user_friendly=False)
 
 
 @dataclass
@@ -134,14 +142,29 @@ class FragmentClient:
             raise FragmentError(f"{method}: не JSON ответ: {r.text[:200]}") from e
         if resp.get("error"):
             raise FragmentError(f"{method}: {resp['error']}")
+        if resp.get("need_verify"):
+            raise FragmentError("Fragment требует верификацию аккаунта — пройди её на fragment.com в браузере")
+        if resp.get("need_ton"):
+            raise FragmentError("В сессии Fragment не подключён TON-кошелёк — нажми Connect TON на fragment.com и обнови куки")
         return resp
 
     @staticmethod
-    def _parse_tx(req_id: str, resp: dict[str, Any]) -> FragmentTx:
+    def _parse_tx(req_id: str, resp: dict[str, Any], wallet_account: str) -> FragmentTx:
+        if resp.get("evm"):
+            raise FragmentError("Fragment выставил счёт в EVM-сети — нужен payment_method=ton")
         tx = resp.get("transaction") or {}
         msgs = tx.get("messages") or []
         if not resp.get("ok") or len(msgs) != 1:
-            raise FragmentError(f"Неожиданный ответ с транзакцией: {resp}")
+            raise FragmentError(f"Неожиданный ответ с транзакцией: {str(resp)[:300]}")
+        # счёт должен быть выставлен нашему кошельку (тому, что подключён к сессии Fragment)
+        sender = tx.get("from")
+        if sender and wallet_account:
+            ours = json.loads(wallet_account)["address"]
+            if _raw(sender) != _raw(ours):
+                raise FragmentError(
+                    "В Fragment подключён другой кошелёк, не кошелёк сервиса. "
+                    "Импортируй мнемонику сервиса в Tonkeeper, подключи его на fragment.com и обнови куки"
+                )
         m = msgs[0]
         return FragmentTx(req_id, m["address"], int(m["amount"]), m.get("payload", ""), resp)
 
@@ -163,19 +186,19 @@ class FragmentClient:
         if quantity < MIN_STARS:
             raise FragmentError(f"Минимум {MIN_STARS} звёзд")
         rec = await self.find_stars_recipient(username)
-        init = await self.call("initBuyStarsRequest", recipient=rec.recipient, quantity=quantity)
+        init = await self.call(
+            "initBuyStarsRequest", recipient=rec.recipient, quantity=quantity, payment_method=PAYMENT_METHOD
+        )
         req_id = init.get("req_id")
         if not req_id:
             raise FragmentError(f"initBuyStarsRequest без req_id: {init}")
         link = await self.call(
             "getBuyStarsLink",
-            account=wallet_account,
-            device=DEVICE,
             transaction=1,
             id=req_id,
             show_sender=0,
         )
-        return rec, self._parse_tx(req_id, link)
+        return rec, self._parse_tx(req_id, link, wallet_account)
 
     # ---------- премиум ----------
 
@@ -194,7 +217,11 @@ class FragmentClient:
             raise FragmentError(f"months должен быть одним из {PREMIUM_MONTHS}")
         rec = await self.find_premium_recipient(username, months)
         init = await self.call(
-            "initGiftPremiumRequest", referer="/premium/gift", recipient=rec.recipient, months=months
+            "initGiftPremiumRequest",
+            referer="/premium/gift",
+            recipient=rec.recipient,
+            months=months,
+            payment_method=PAYMENT_METHOD,
         )
         req_id = init.get("req_id")
         if not req_id:
@@ -202,10 +229,8 @@ class FragmentClient:
         link = await self.call(
             "getGiftPremiumLink",
             referer="/premium/gift",
-            account=wallet_account,
-            device=DEVICE,
             transaction=1,
             id=req_id,
             show_sender=0,
         )
-        return rec, self._parse_tx(req_id, link)
+        return rec, self._parse_tx(req_id, link, wallet_account)
