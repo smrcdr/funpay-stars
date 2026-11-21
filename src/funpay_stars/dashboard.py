@@ -3,7 +3,7 @@
 Работает БЕЗ мнемоники — нужен только публичный адрес кошелька (WALLET_ADDRESS)
 и (необязательно) база заказов orders.sqlite3.
 
-Запуск: uv run uvicorn funpay_stars.dashboard:app --port 8090
+Подключается в server.py.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import httpx
-from fastapi import FastAPI
+from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 WALLET_ADDRESS = os.getenv("WALLET_ADDRESS", "").strip()
@@ -33,7 +33,7 @@ MIN_STARS = 50
 STATIC = Path(__file__).parent / "static"
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/131.0 Safari/537.36"
 
-app = FastAPI(title="stars dashboard", docs_url=None, redoc_url=None)
+router = APIRouter()
 _cache: dict[str, tuple[float, object]] = {}
 _lock = asyncio.Lock()
 
@@ -151,7 +151,7 @@ def _stats() -> dict:
     return s
 
 
-@app.get("/api/summary")
+@router.get("/api/summary")
 async def summary():
     async with _lock, httpx.AsyncClient(timeout=20, headers={"User-Agent": UA}) as c:
         out: dict = {"address": WALLET_ADDRESS, "errors": []}
@@ -182,11 +182,11 @@ async def summary():
     return out
 
 
-@app.get("/")
+@router.get("/")
 async def index():
     return FileResponse(STATIC / "dashboard.html", headers={"Cache-Control": "no-cache"})
 
 
-@app.get("/healthz")
+@router.get("/healthz")
 async def healthz():
     return {"ok": True}

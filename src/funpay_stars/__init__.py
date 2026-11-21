@@ -52,7 +52,7 @@ def main() -> None:
     if a.cmd == "serve":
         import uvicorn
 
-        uvicorn.run("funpay_stars.api:app", host=a.host, port=a.port)
+        uvicorn.run("funpay_stars.server:app", host=a.host, port=a.port)
         return
 
     asyncio.run(_async_cmd(a))

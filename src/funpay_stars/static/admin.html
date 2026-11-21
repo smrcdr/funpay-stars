@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Stars Admin</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%232a78d6' d='M12 2l2.9 6.9 7.1.6-5.4 4.7 1.7 7.1L12 17.6 5.7 21.3l1.7-7.1L2 9.5l7.1-.6z'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4f3f0; --surface: #fcfcfb; --surface-2: #f0efec; --border: #e3e2dd;
+  --text: #0b0b0b; --text-2: #52514e; --muted: #8a8984;
+  --accent: #2a78d6; --star: #c98500; --good: #0a7d0a; --warn: #b26b00; --bad: #d03b3b;
+  --good-bg: #e6f4e6; --warn-bg: #fdf1dc; --bad-bg: #fbe7e7;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b;
+    --text: #f0efec; --text-2: #c3c2b7; --muted: #8b8a82;
+    --accent: #3987e5; --star: #eda100; --good: #0ca30c; --warn: #fab219; --bad: #e66767;
+    --good-bg: #13260f; --warn-bg: #2b220d; --bad-bg: #2d1515; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b;
+  --text: #f0efec; --text-2: #c3c2b7; --muted: #8b8a82;
+  --accent: #3987e5; --star: #eda100; --good: #0ca30c; --warn: #fab219; --bad: #e66767;
+  --good-bg: #13260f; --warn-bg: #2b220d; --bad-bg: #2d1515; --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; white-space: nowrap; }
+.brand svg { width: 22px; height: 22px; color: var(--accent); }
+.brand span { font-weight: 500; color: var(--muted); font-size: 14px; }
+.hdr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.chip.ok i { background: var(--good); } .chip.bad i { background: var(--bad); }
+.chip b { color: var(--text); font-weight: 600; }
+
+button, .btn { font: inherit; font-size: 14px; font-weight: 500; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+button:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover:not(:disabled) { filter: brightness(1.08); color: #fff; }
+button.go { background: var(--good); border-color: var(--good); color: #fff; }
+button.go:hover:not(:disabled) { filter: brightness(1.08); color: #fff; }
+button.sm { font-size: 13px; padding: 5px 10px; }
+button.link { border: 0; background: none; padding: 4px 6px; color: var(--muted); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 20px; }
+.card h2 { font-size: 15px; font-weight: 600; margin: 0 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; margin-bottom: 12px; align-items: start; }
+.stack { display: grid; gap: 12px; }
+.grid > *, .stack > *, .stack { min-width: 0; }
+
+label { display: block; font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; }
+input { font: inherit; width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); outline: none; }
+input:focus { border-color: var(--accent); background: var(--surface); }
+input.mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13px; }
+.field { margin-bottom: 14px; }
+.at { position: relative; } .at::before { content: "@"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.at input { padding-left: 28px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.presets button { font-size: 13px; padding: 4px 10px; font-variant-numeric: tabular-nums; }
+.presets button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); border-color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 7px 16px; }
+.tabs { margin-bottom: 16px; }
+.row { display: flex; gap: 8px; } .row > * { flex: 1; }
+details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+
+.quote { border-radius: 10px; background: var(--surface-2); padding: 14px; margin: 4px 0 14px; display: none; }
+.quote .who { font-weight: 600; }
+.quote .who small { color: var(--muted); font-weight: 400; margin-left: 4px; }
+.quote dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 10px 0 0; font-size: 14px; font-variant-numeric: tabular-nums; }
+.quote dt { color: var(--muted); } .quote dd { margin: 0; text-align: right; }
+.quote dd.big { font-size: 18px; font-weight: 700; }
+.msg { border-radius: 10px; padding: 11px 14px; font-size: 14px; margin-top: 12px; display: none; word-break: break-word; }
+.msg.ok { background: var(--good-bg); color: var(--good); }
+.msg.warn { background: var(--warn-bg); color: var(--warn); }
+.msg.bad { background: var(--bad-bg); color: var(--bad); }
+.msg b { color: inherit; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 0 8px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 9px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.r, th.r { text-align: right; }
+td.id { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.scroll { overflow-x: auto; }
+.st { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.st i { width: 7px; height: 7px; border-radius: 50%; }
+.st.confirmed i { background: var(--good); } .st.sent i { background: var(--warn); } .st.failed i { background: var(--bad); }
+.empty { color: var(--muted); text-align: center; padding: 32px 0; font-size: 14px; }
+pre { font-family: "JetBrains Mono", monospace; font-size: 12px; background: var(--surface-2); border-radius: 8px; padding: 12px; overflow-x: auto; margin: 0; color: var(--text-2); }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+
+#login { position: fixed; inset: 0; background: var(--bg); display: grid; place-items: center; padding: 16px; z-index: 10; }
+#login[hidden], [hidden] { display: none !important; }
+#login .card { width: 100%; max-width: 380px; }
+#login p { color: var(--text-2); font-size: 14px; margin: 0 0 16px; }
+.spin { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: s .7s linear infinite; display: inline-block; }
+@keyframes s { to { transform: rotate(360deg); } }
+
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .card { padding: 16px; } .hide-sm { display: none; } }
+</style>
+</head>
+<body>
+
+<div id="login" hidden>
+  <form class="card" id="loginForm">
+    <h2>Вход в админку</h2>
+    <p>Введи API_TOKEN из .env на сервере.</p>
+    <div class="field"><input id="tokenIn" type="password" class="mono" autocomplete="current-password" placeholder="API_TOKEN" required></div>
+    <button class="primary" style="width:100%">Войти</button>
+    <div class="msg bad" id="loginErr"></div>
+  </form>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.7 7.1L12 17.6 5.7 21.3l1.7-7.1L2 9.5l7.1-.6z"/></svg>
+      Stars Admin <span>ручная выдача</span>
+    </div>
+    <div class="hdr">
+      <span class="chip" id="balChip"><i></i>Баланс <b id="bal">—</b></span>
+      <span class="chip" id="sessChip"><i></i><span id="sess">Fragment: …</span></span>
+      <a class="btn" href="/" style="font-size:13px;padding:5px 10px">Дашборд</a>
+      <button class="link" id="theme" title="Тема">◐</button>
+      <button class="link" id="logout">Выйти</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Выдать</h2>
+      <div class="seg tabs" role="tablist">
+        <button type="button" data-kind="stars" aria-pressed="true">★ Звёзды</button>
+        <button type="button" data-kind="premium" aria-pressed="false">Premium</button>
+      </div>
+      <form id="issueForm" autocomplete="off">
+        <div class="field">
+          <label for="username">Telegram username получателя</label>
+          <div class="at"><input id="username" placeholder="username" required pattern="@?[A-Za-z0-9_]{4,32}"></div>
+        </div>
+        <div class="field" id="qtyField">
+          <label for="qty">Количество звёзд (от 50)</label>
+          <input id="qty" type="number" min="50" step="1" value="50" required>
+          <div class="presets" id="presets"></div>
+        </div>
+        <div class="field" id="monthsField" hidden>
+          <label>Срок Premium</label>
+          <div class="seg" id="months">
+            <button type="button" data-m="3" aria-pressed="true">3 мес</button>
+            <button type="button" data-m="6" aria-pressed="false">6 мес</button>
+            <button type="button" data-m="12" aria-pressed="false">12 мес</button>
+          </div>
+        </div>
+        <details>
+          <summary>ID заказа (необязательно)</summary>
+          <div class="field"><input id="orderId" class="mono" placeholder="например, номер заказа FunPay" maxlength="128"></div>
+        </details>
+
+        <div class="quote" id="quote"></div>
+
+        <div class="row">
+          <button type="submit" id="checkBtn">Проверить</button>
+          <button type="button" class="go" id="issueBtn" disabled>Выдать</button>
+        </div>
+        <div class="msg" id="issueMsg"></div>
+      </form>
+    </section>
+
+    <div class="stack">
+      <section class="card">
+        <h2>Сессия Fragment <button class="sm" id="sessCheck" type="button">Проверить</button></h2>
+        <p class="hint">Куки с fragment.com после входа через Telegram и подключения кошелька (DevTools → Application → Cookies). Хранятся на сервере, в браузер не возвращаются.</p>
+        <form id="sessForm" autocomplete="off">
+          <div class="field"><label for="c1">stel_ssid</label><input id="c1" type="password" class="mono"></div>
+          <div class="field"><label for="c2">stel_token</label><input id="c2" type="password" class="mono"></div>
+          <div class="field"><label for="c3">stel_ton_token</label><input id="c3" type="password" class="mono"></div>
+          <button class="primary" style="width:100%">Сохранить</button>
+          <div class="msg" id="sessMsg"></div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>API для FunPay</h2>
+        <pre id="curl"></pre>
+      </section>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2>История <button class="sm" id="reload" type="button">↻ Обновить</button></h2>
+    <div class="scroll" id="orders"><div class="empty">Загрузка…</div></div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = (n, d = 0) => Number(n).toLocaleString("ru-RU", { maximumFractionDigits: d });
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} },
+};
+let token = store.get("adminToken") || "";
+try { const t = store.get("theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+$("theme").onclick = () => {
+  const dark = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() === "#111110";
+  document.documentElement.dataset.theme = dark ? "light" : "dark"; store.set("theme", dark ? "light" : "dark");
+};
+
+async function api(path, opts = {}) {
+  const r = await fetch("/api/v1" + path, {
+    ...opts,
+    headers: { "Authorization": "Bearer " + token, ...(opts.body ? { "Content-Type": "application/json" } : {}) },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (r.status === 401) { showLogin("Неверный токен"); throw new Error("401"); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail)) : "HTTP " + r.status);
+  return data;
+}
+function msg(el, cls, html) { el.className = "msg " + cls; el.innerHTML = html; el.style.display = html ? "block" : "none"; }
+
+// ---------- вход ----------
+function showLogin(err) { $("login").hidden = false; msg($("loginErr"), "bad", err || ""); setTimeout(() => $("tokenIn").focus(), 0); }
+$("loginForm").onsubmit = async (e) => {
+  e.preventDefault(); token = $("tokenIn").value.trim();
+  try { await api("/balance"); store.set("adminToken", token); $("login").hidden = true; boot(); }
+  catch (err) { if (err.message !== "401") msg($("loginErr"), "bad", esc(err.message)); }
+};
+$("logout").onclick = () => { token = ""; store.set("adminToken", null); showLogin(); };
+
+// ---------- шапка ----------
+let balanceTon = null;
+async function loadBalance() {
+  try { const b = await api("/balance"); balanceTon = Number(b.balance_ton); $("bal").textContent = fmt(b.balance_ton, 3) + " TON"; $("balChip").className = "chip ok"; window._addr = b.address; }
+  catch (e) { $("bal").textContent = "ошибка"; $("balChip").className = "chip bad"; }
+}
+async function loadSession() {
+  $("sess").textContent = "Fragment: проверка…"; $("sessChip").className = "chip";
+  try {
+    const s = await api("/fragment/session");
+    $("sess").textContent = s.authorized ? "Fragment: подключён" : s.has_cookies ? "Fragment: куки протухли" : "Fragment: нет кук";
+    $("sessChip").className = "chip " + (s.authorized ? "ok" : "bad");
+    return s;
+  } catch (e) { $("sess").textContent = "Fragment: ошибка"; $("sessChip").className = "chip bad"; }
+}
+$("sessCheck").onclick = loadSession;
+$("sessForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const body = { stel_ssid: $("c1").value, stel_token: $("c2").value, stel_ton_token: $("c3").value };
+  if (!body.stel_ssid || !body.stel_token) return msg($("sessMsg"), "bad", "Нужны минимум stel_ssid и stel_token");
+  try {
+    const s = await api("/fragment/session", { method: "POST", body });
+    ["c1", "c2", "c3"].forEach((id) => ($(id).value = ""));
+    msg($("sessMsg"), s.authorized ? "ok" : "bad", s.authorized ? "Сохранено, Fragment видит сессию ✓" : "Сохранено, но Fragment не считает сессию авторизованной — проверь куки");
+    loadSession();
+  } catch (err) { msg($("sessMsg"), "bad", esc(err.message)); }
+};
+
+// ---------- форма выдачи ----------
+let kind = "stars", months = 3, quote = null;
+const PRESETS = [50, 100, 250, 500, 1000, 2500, 5000];
+$("presets").innerHTML = PRESETS.map((n) => `<button type="button" data-n="${n}">${fmt(n)}</button>`).join("");
+function syncPresets() { const v = +$("qty").value; $("presets").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.n === v)); }
+$("presets").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; $("qty").value = b.dataset.n; syncPresets(); reset(); };
+document.querySelectorAll(".tabs button").forEach((b) => (b.onclick = () => {
+  kind = b.dataset.kind;
+  document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  $("qtyField").hidden = kind !== "stars"; $("qty").required = kind === "stars"; $("monthsField").hidden = kind !== "premium";
+  reset();
+}));
+$("months").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; months = +b.dataset.m; $("months").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b)); reset(); };
+["username", "qty", "orderId"].forEach((id) => $(id).addEventListener("input", () => { if (id === "qty") syncPresets(); reset(); }));
+syncPresets();
+
+function reset() { quote = null; $("quote").style.display = "none"; $("issueBtn").disabled = true; $("issueBtn").textContent = "Выдать"; msg($("issueMsg"), "", ""); }
+function payload(dry) {
+  const p = { username: $("username").value.trim().replace(/^@/, ""), dry_run: dry };
+  const oid = $("orderId").value.trim(); if (oid) p.order_id = oid;
+  if (kind === "stars") p.quantity = +$("qty").value; else p.months = months;
+  return p;
+}
+function busy(btn, on, text) { btn.disabled = on; if (on) { btn.dataset.t = btn.textContent; btn.innerHTML = `<span class="spin"></span> ${text}`; } else if (btn.dataset.t) btn.textContent = btn.dataset.t; }
+
+$("issueForm").onsubmit = async (e) => {
+  e.preventDefault(); reset();
+  const p = payload(true);
+  busy($("checkBtn"), true, "Проверяю");
+  try {
+    const q = await api("/" + kind, { method: "POST", body: p });
+    quote = { ...p, price: Number(q.price_ton), name: q.recipient_name };
+    const after = balanceTon != null ? balanceTon - quote.price - 0.01 : null;
+    const what = kind === "stars" ? "★ " + fmt(p.quantity) : "Premium " + months + " мес";
+    $("quote").innerHTML = `<div class="who">${esc(q.recipient_name || "—")}<small>@${esc(q.username)}</small></div>
+      <dl><dt>Что</dt><dd>${what}</dd><dt>Цена</dt><dd class="big">${fmt(quote.price, 4)} TON</dd>
+      ${after != null ? `<dt>Останется</dt><dd style="color:${after < 0 ? "var(--bad)" : "inherit"}">${fmt(after, 3)} TON</dd>` : ""}</dl>`;
+    $("quote").style.display = "block";
+    if (after != null && after < 0) msg($("issueMsg"), "bad", "Не хватает TON на балансе — пополни кошелёк");
+    else { $("issueBtn").disabled = false; $("issueBtn").textContent = `Выдать за ${fmt(quote.price, 3)} TON`; }
+  } catch (err) { msg($("issueMsg"), "bad", esc(err.message)); }
+  busy($("checkBtn"), false);
+};
+
+$("issueBtn").onclick = async () => {
+  if (!quote) return;
+  const what = kind === "stars" ? fmt(quote.quantity) + " звёзд" : "Premium на " + months + " мес";
+  if (!confirm(`Выдать ${what} пользователю @${quote.username} за ~${fmt(quote.price, 3)} TON?\n\nПлатёж уйдёт с кошелька сразу, отменить нельзя.`)) return;
+  const p = payload(false);
+  p.order_id = p.order_id || "manual-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  $("orderId").value = p.order_id; // повторное нажатие с тем же id не заплатит второй раз
+  busy($("issueBtn"), true, "Отправляю, ждём подтверждения сети…"); $("checkBtn").disabled = true;
+  try {
+    const r = await api("/" + kind, { method: "POST", body: p });
+    if (r.status === "confirmed") msg($("issueMsg"), "ok", `Готово ✓ ${esc(what)} → @${esc(r.username)} за ${fmt(r.price_ton, 4)} TON<br><small>заказ ${esc(r.order_id)}</small>`);
+    else if (r.status === "sent") msg($("issueMsg"), "warn", `Платёж отправлен, но подтверждение сети не дождались. Проверь в истории через минуту.<br><small>${esc(r.detail)}</small>`);
+    else msg($("issueMsg"), "bad", `Не выдано: ${esc(r.detail || r.status)}`);
+    quote = null; $("issueBtn").textContent = "Выдать"; $("issueBtn").dataset.t = "Выдать";
+    loadBalance(); loadOrders();
+  } catch (err) { msg($("issueMsg"), "bad", esc(err.message)); }
+  busy($("issueBtn"), false); $("issueBtn").disabled = true; $("checkBtn").disabled = false;
+};
+
+// ---------- история ----------
+const ST = { confirmed: "выдано", sent: "отправлено", failed: "ошибка" };
+async function loadOrders() {
+  try {
+    const rows = await api("/orders?limit=100");
+    if (!rows.length) { $("orders").innerHTML = '<div class="empty">Заказов пока нет</div>'; return; }
+    $("orders").innerHTML = `<table><thead><tr><th>Когда</th><th>Что</th><th>Кому</th><th class="r">Цена</th><th>Статус</th><th class="hide-sm">ID заказа</th></tr></thead><tbody>` +
+      rows.map((o) => {
+        const d = new Date(o.created_at * 1000);
+        const when = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) + " " + d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+        const what = o.kind === "stars" ? "★ " + fmt(o.amount) : "Premium " + o.amount + " мес";
+        return `<tr title="${esc(o.detail)}"><td>${when}</td><td>${what}</td><td>@${esc(o.username)}</td><td class="r">${fmt(o.price_ton, 4)} TON</td>
+          <td><span class="st ${esc(o.status)}"><i></i>${ST[o.status] || esc(o.status)}</span></td><td class="id hide-sm">${esc(o.order_id)}</td></tr>`;
+      }).join("") + "</tbody></table>";
+  } catch (e) { if (e.message !== "401") $("orders").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+$("reload").onclick = loadOrders;
+
+$("curl").textContent = `curl -X POST ${location.origin}/api/v1/stars \\
+  -H "Authorization: Bearer $API_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"order_id":"FP-12345","username":"durov","quantity":100}'
+
+# dry_run: true — только цена, без оплаты
+# повтор с тем же order_id не платит второй раз
+# premium: POST /api/v1/premium {"username":..,"months":3|6|12}`;
+
+function boot() { loadBalance(); loadSession(); loadOrders(); }
+if (!token) showLogin(); else { api("/balance").then(() => boot()).catch((e) => { if (e.message !== "401") boot(); }); }
+</script>
+</body>
+</html>

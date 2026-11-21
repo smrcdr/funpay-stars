@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Деплой дашборда на modelport-prod: ./deploy.sh
+# Деплой на modelport-prod: ./deploy.sh
+# Код уходит tar'ом, .env (мнемоника, API_TOKEN) — отдельно с правами 600.
 set -euo pipefail
 HOST=${HOST:-modelport-prod}
 DIR=funpay-stars
@@ -7,16 +8,18 @@ DOMAIN=stars.modelport.org
 PORT=38110
 
 cd "$(dirname "$0")"
+test -f .env || { echo "нет .env"; exit 1; }
+
 COPYFILE_DISABLE=1 tar -cz --no-xattrs \
-  --exclude .venv --exclude .git --exclude .env --exclude '*.sqlite3' \
+  --exclude .venv --exclude .git --exclude .env --exclude '*.sqlite3*' \
   --exclude data --exclude dashboard.env --exclude .claude --exclude __pycache__ \
   . | ssh "$HOST" "mkdir -p $DIR && cd $DIR && rm -rf src && tar -xzf - --warning=no-unknown-keyword"
 
-# публичный адрес берём из локального .env (мнемоника на сервер не уходит)
-ADDR=$(uv run python -c "from funpay_stars.config import load_settings as l;from funpay_stars.wallet import TonWallet as W;print(W(l()).address)")
-TCK=$(grep -E '^TONCENTER_API_KEY=' .env | cut -d= -f2- || true)
+# секреты: без локальных путей (DB_PATH задаёт Dockerfile)
+grep -vE '^(DB_PATH)=' .env | ssh "$HOST" "cd $DIR && umask 077 && cat > .env && chmod 600 .env && rm -f dashboard.env && mkdir -p data"
 
-ssh "$HOST" "cd $DIR && mkdir -p data && umask 077 && printf 'WALLET_ADDRESS=%s\nTONCENTER_API_KEY=%s\n' '$ADDR' '$TCK' > dashboard.env && docker compose up -d --build && docker compose ps"
+ssh "$HOST" "cd $DIR && docker compose up -d --build --remove-orphans && docker compose ps"
 
-# маршрут в Caddy через admin API (если ещё нет)
-ssh "$HOST" "curl -s localhost:2019/config/apps/http/servers/srv0/routes | grep -q '$DOMAIN' || curl -sf -X POST -H 'Content-Type: application/json' localhost:2019/config/apps/http/servers/srv0/routes -d '{\"match\":[{\"host\":[\"$DOMAIN\"]}],\"handle\":[{\"handler\":\"subroute\",\"routes\":[{\"handle\":[{\"handler\":\"reverse_proxy\",\"upstreams\":[{\"dial\":\"127.0.0.1:$PORT\"}]}]}]}],\"terminal\":true}' && echo caddy-route-ok"
+# маршрут живёт в /etc/caddy/Caddyfile (stars.modelport.org -> 127.0.0.1:$PORT)
+sleep 3
+curl -sf -o /dev/null "https://$DOMAIN/healthz" && echo "OK: https://$DOMAIN" || echo "ВНИМАНИЕ: https://$DOMAIN не отвечает"

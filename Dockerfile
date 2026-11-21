@@ -14,4 +14,4 @@ USER app
 
 ENV DB_PATH=/data/orders.sqlite3
 EXPOSE 8080
-CMD ["/app/.venv/bin/uvicorn", "funpay_stars.dashboard:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["/app/.venv/bin/uvicorn", "funpay_stars.server:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips", "*"]

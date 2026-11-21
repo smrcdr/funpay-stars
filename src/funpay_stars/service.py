@@ -8,11 +8,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import os
 import sqlite3
 import time
 from dataclasses import asdict, dataclass
 from decimal import Decimal
+from pathlib import Path
 from typing import Literal
 
 from .config import Settings
@@ -38,7 +41,8 @@ class OrderResult:
 
 class OrderStore:
     def __init__(self, path) -> None:
-        self.db = sqlite3.connect(path)
+        self.db = sqlite3.connect(path, check_same_thread=False)
+        self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute(
             """CREATE TABLE IF NOT EXISTS orders (
                 order_id TEXT PRIMARY KEY,
@@ -53,6 +57,12 @@ class OrderStore:
         row = self.db.execute("SELECT data FROM orders WHERE order_id=?", (order_id,)).fetchone()
         return OrderResult(**json.loads(row[0])) if row else None
 
+    def list(self, limit: int = 50) -> list[dict]:
+        rows = self.db.execute(
+            "SELECT created_at, data FROM orders ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [{**json.loads(d), "created_at": c} for c, d in rows]
+
     def save(self, res: OrderResult) -> None:
         self.db.execute(
             "INSERT OR REPLACE INTO orders VALUES (?,?,?,?)",
@@ -65,8 +75,27 @@ class StarsService:
     def __init__(self, settings: Settings) -> None:
         self.s = settings
         self.wallet = TonWallet(settings)
-        self.fragment = FragmentClient(settings.fragment_cookies)
+        self.session_file = Path(settings.db_path).parent / "fragment_session.json"
+        self.fragment = FragmentClient(self._cookies())
         self.store = OrderStore(settings.db_path)
+        self._order_lock = asyncio.Lock()
+
+    def _cookies(self) -> dict[str, str]:
+        """Куки из data/fragment_session.json (сохраняются из админки) перекрывают .env."""
+        cookies = dict(self.s.fragment_cookies)
+        if self.session_file.exists():
+            cookies.update({k: v for k, v in json.loads(self.session_file.read_text()).items() if v})
+        return cookies
+
+    async def set_fragment_cookies(self, cookies: dict[str, str]) -> dict:
+        data = {k: v.strip() for k, v in cookies.items() if v and v.strip()}
+        fd = os.open(self.session_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f)
+        old = self.fragment
+        self.fragment = FragmentClient(self._cookies())
+        await old.__aexit__()
+        return await self.fragment.status()
 
     async def __aenter__(self) -> "StarsService":
         await self.wallet.__aenter__()
@@ -75,6 +104,13 @@ class StarsService:
     async def __aexit__(self, *exc) -> None:
         await self.fragment.__aexit__()
         await self.wallet.__aexit__()
+
+    async def recipient(self, username: str, kind: Kind = "stars", months: int = 3) -> dict:
+        if kind == "stars":
+            r = await self.fragment.find_stars_recipient(username)
+        else:
+            r = await self.fragment.find_premium_recipient(username, months)
+        return {"username": r.username, "name": r.name}
 
     async def balance(self) -> dict:
         return {"address": self.wallet.address, "balance_ton": str(await self.wallet.balance())}
@@ -92,6 +128,13 @@ class StarsService:
         )
 
     async def _run(self, order_id, kind, username, amount, dry_run, get_tx) -> OrderResult:
+        if dry_run:
+            return await self._run_locked(order_id, kind, username, amount, dry_run, get_tx)
+        # реальные выдачи строго по очереди: исключает двойную оплату одного order_id
+        async with self._order_lock:
+            return await self._run_locked(order_id, kind, username, amount, dry_run, get_tx)
+
+    async def _run_locked(self, order_id, kind, username, amount, dry_run, get_tx) -> OrderResult:
         prev = self.store.get(order_id)
         if prev and prev.status in ("sent", "confirmed"):
             return prev  # уже оплачен — повторно не платим

@@ -58,8 +58,7 @@ class FragmentTx:
 
 class FragmentClient:
     def __init__(self, cookies: dict[str, str]) -> None:
-        if not cookies.get("stel_ssid") or not cookies.get("stel_token"):
-            raise FragmentError("Нет кук Fragment (FRAGMENT_STEL_SSID / FRAGMENT_STEL_TOKEN) в .env")
+        self.has_cookies = bool(cookies.get("stel_ssid") and cookies.get("stel_token"))
         self._http = httpx.AsyncClient(
             base_url=BASE,
             cookies=cookies,
@@ -90,11 +89,32 @@ class FragmentClient:
         self._hash = m.group(1)
         return self._hash
 
+    async def status(self) -> dict[str, Any]:
+        """Проверка сессии: есть ли куки и считает ли Fragment нас залогиненными."""
+        self._hash = None
+        try:
+            await self._api_hash()
+        except Exception as e:
+            return {"has_cookies": self.has_cookies, "authorized": False, "error": str(e)}
+        return {"has_cookies": self.has_cookies, "authorized": self.authorized}
+
     async def call(self, method: str, referer: str = "/stars/buy", **params: Any) -> dict[str, Any]:
+        if not self.has_cookies:
+            raise FragmentError("Нет кук Fragment — вставь их в админке (раздел «Сессия Fragment»)")
+        try:
+            return await self._call(method, referer, **params)
+        except (FragmentError, httpx.HTTPError) as e:
+            # hash страницы мог смениться — пробуем один раз со свежим
+            if "Access denied" in str(e) or isinstance(e, httpx.HTTPError):
+                self._hash = None
+                return await self._call(method, referer, **params)
+            raise
+
+    async def _call(self, method: str, referer: str, **params: Any) -> dict[str, Any]:
         api_hash = await self._api_hash()
         if not self.authorized:
-            raise FragmentError("Fragment видит сессию как неавторизованную — обнови куки в .env")
-        data ={k: str(v) for k, v in params.items() if v is not None}
+            raise FragmentError("Fragment видит сессию как неавторизованную — обнови куки в админке")
+        data = {k: str(v) for k, v in params.items() if v is not None}
         data["method"] = method
         r = await self._http.post(
             "/api",
