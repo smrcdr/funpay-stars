@@ -13,6 +13,7 @@ from decimal import Decimal
 from ton_core import Cell, NetworkGlobalID
 from tonutils.clients import ToncenterClient
 from tonutils.contracts.wallet import TONTransferBuilder, WalletV5R1, seqno_get_method
+from tonutils.types import RetryPolicy, RetryRule
 
 from .config import ENV_PATH, Settings
 
@@ -32,6 +33,12 @@ def _b64decode(data: str) -> bytes:
     return base64.b64decode(data + "=" * (-len(data) % 4))
 
 
+RATE_LIMIT_RETRY = RetryPolicy(
+    rules=(RetryRule(max_retries=8, base_delay=1.0, max_delay=8.0, backoff_factor=2.0, codes=frozenset({429})),),
+    total_timeout=60.0,
+)
+
+
 @dataclass
 class PaymentResult:
     destination: str
@@ -44,9 +51,15 @@ class TonWallet:
     def __init__(self, settings: Settings) -> None:
         if not settings.wallet_mnemonic:
             raise RuntimeError("WALLET_MNEMONIC пуст — сначала: uv run funpay-stars wallet-create")
+        key = settings.toncenter_api_key or None
         self.client = ToncenterClient(
             NetworkGlobalID.MAINNET,
-            api_key=settings.toncenter_api_key or None,
+            api_key=key,
+            # без ключа toncenter пускает ~1 запрос/с и отвечает 429; при 429 запрос не выполнен,
+            # поэтому его безопасно повторить (в том числе sendBoc)
+            rps_limit=None if key else 1,
+            rps_period=None if key else 1.1,
+            retry_policy=RATE_LIMIT_RETRY,
         )
         self.wallet, self.public_key, _, _ = WalletV5R1.from_mnemonic(
             self.client, settings.wallet_mnemonic

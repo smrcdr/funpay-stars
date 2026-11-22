@@ -35,6 +35,9 @@ class Settings:
     max_ton_per_order: Decimal
     api_token: str
 
+    # Комиссия FunPay в %, вычитается из выручки (0 — если сумма заказа уже «на руки»)
+    funpay_fee_pct: Decimal
+
     db_path: Path
 
     @property
@@ -58,5 +61,6 @@ def load_settings() -> Settings:
         fragment_stel_dt=_get("FRAGMENT_STEL_DT", "-180"),
         max_ton_per_order=Decimal(_get("MAX_TON_PER_ORDER", "10")),
         api_token=_get("API_TOKEN"),
+        funpay_fee_pct=Decimal(_get("FUNPAY_FEE_PCT", "0")),
         db_path=ROOT / _get("DB_PATH", "orders.sqlite3"),
     )

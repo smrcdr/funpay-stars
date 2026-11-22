@@ -102,6 +102,25 @@ td.id { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--
 pre { font-family: "JetBrains Mono", monospace; font-size: 12px; background: var(--surface-2); border-radius: 8px; padding: 12px; overflow-x: auto; margin: 0; color: var(--text-2); }
 .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
 
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.kpi { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.kpi small { display: block; font-size: 12px; color: var(--muted); }
+.kpi b { display: block; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi span { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 90px; margin: 4px 0 18px; }
+.bars div { flex: 1; min-width: 0; height: 100%; position: relative; }
+.bars i { position: absolute; bottom: 0; left: 0; right: 0; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 1px; opacity: .85; }
+.bars i.c { left: 28%; right: 28%; background: var(--text-2); opacity: .5; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+input.num { width: 90px; padding: 5px 8px; font-size: 13px; }
+input[type=checkbox] { width: auto; accent-color: var(--accent); }
+.tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); }
+.tag.on { background: var(--good-bg); color: var(--good); } .tag.off { background: var(--bad-bg); color: var(--bad); }
+td.t { white-space: normal; min-width: 180px; max-width: 320px; }
+@media (max-width: 720px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 #login { position: fixed; inset: 0; background: var(--bg); display: grid; place-items: center; padding: 16px; z-index: 10; }
 #login[hidden], [hidden] { display: none !important; }
 #login .card { width: 100%; max-width: 380px; }
@@ -129,7 +148,7 @@ pre { font-family: "JetBrains Mono", monospace; font-size: 12px; background: var
   <header>
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.7 7.1L12 17.6 5.7 21.3l1.7-7.1L2 9.5l7.1-.6z"/></svg>
-      Stars Admin <span>ручная выдача</span>
+      Stars Admin <span>выдача и FunPay</span>
     </div>
     <div class="hdr">
       <span class="chip" id="balChip"><i></i>Баланс <b id="bal">—</b></span>
@@ -199,6 +218,28 @@ pre { font-family: "JetBrains Mono", monospace; font-size: 12px; background: var
       </section>
     </div>
   </div>
+
+  <section class="card" style="margin-bottom:12px">
+    <h2>Продажи FunPay
+      <span class="seg" id="period">
+        <button type="button" data-p="today" aria-pressed="false">Сегодня</button>
+        <button type="button" data-p="week" aria-pressed="false">7 дней</button>
+        <button type="button" data-p="month" aria-pressed="true">30 дней</button>
+        <button type="button" data-p="all" aria-pressed="false">Всё</button>
+      </span>
+    </h2>
+    <div class="kpis" id="kpis"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>выручка</span><span><i style="background:var(--text-2);opacity:.5"></i>себестоимость</span><span id="chartMax"></span></div>
+    <div class="bars" id="bars"></div>
+    <p class="hint" id="statsNote"></p>
+    <div class="scroll" id="sales"><div class="empty">Загрузка…</div></div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px">
+    <h2>Лоты FunPay <button class="sm" id="lotsReload" type="button">↻ Обновить</button></h2>
+    <p class="hint" id="lotsHint">Лоты присылает плагин Cardinal. Выдача = количество в заказе × «звёзд за 1 шт.». Автоактивация включает лот, когда TON хватает на «мин. шт.» (и не меньше 50 ⭐), и выключает, когда не хватает.</p>
+    <div class="scroll" id="lots"><div class="empty">Загрузка…</div></div>
+  </section>
 
   <section class="card">
     <h2>История <button class="sm" id="reload" type="button">↻ Обновить</button></h2>
@@ -361,7 +402,88 @@ $("curl").textContent = `curl -X POST ${location.origin}/api/v1/stars \\
 # повтор с тем же order_id не платит второй раз
 # premium: POST /api/v1/premium {"username":..,"months":3|6|12}`;
 
-function boot() { loadBalance(); loadSession(); loadOrders(); }
+// ---------- продажи FunPay ----------
+let period = "month", statsData = null;
+const rub = (v) => v == null || v === "" ? "—" : fmt(v, 0) + " ₽";
+$("period").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; period = b.dataset.p; $("period").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b)); renderKpis(); };
+function renderKpis() {
+  if (!statsData) return;
+  const t = statsData.totals[period];
+  const p = Number(t.profit_rub);
+  $("kpis").innerHTML = `
+    <div class="kpi"><small>Выручка</small><b>${rub(t.revenue_rub)}</b><span>${fmt(t.orders)} заказов · ★ ${fmt(t.stars)}</span></div>
+    <div class="kpi"><small>Себестоимость</small><b>${rub(t.cost_rub)}</b><span>${fmt(t.cost_ton, 3)} TON</span></div>
+    <div class="kpi"><small>Прибыль</small><b class="${p >= 0 ? "pos" : "neg"}">${rub(t.profit_rub)}</b><span>маржа ${t.margin_pct == null ? "—" : t.margin_pct + "%"}</span></div>
+    <div class="kpi"><small>Средний чек</small><b>${t.orders ? rub(Number(t.revenue_rub) / t.orders) : "—"}</b><span>${t.stars ? fmt(Number(t.revenue_rub) / t.stars, 2) + " ₽ за ⭐" : ""}</span></div>`;
+}
+async function loadStats() {
+  try {
+    statsData = await api("/stats?days=30");
+    renderKpis();
+    const d = statsData.daily, max = Math.max(1, ...d.map((x) => Math.max(+x.revenue_rub, +x.cost_rub)));
+    $("chartMax").textContent = "макс. " + rub(max) + " в день";
+    $("bars").innerHTML = d.map((x) => {
+      const day = new Date(x.day * 1000).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+      return `<div title="${day}: выручка ${rub(x.revenue_rub)}, себестоимость ${rub(x.cost_rub)}, прибыль ${rub(x.profit_rub)}, заказов ${x.orders}">
+        <i style="height:${(+x.revenue_rub / max) * 100}%"></i><i class="c" style="height:${(+x.cost_rub / max) * 100}%"></i></div>`;
+    }).join("");
+    const m = statsData.manual, notes = [];
+    if (m.orders) notes.push(`Ручные выдачи за 30 дней: ${fmt(m.orders)} шт., ★ ${fmt(m.stars)}, ${rub(m.cost_rub)} — в прибыль не входят.`);
+    if (statsData.failed) notes.push(`Неудачных попыток выдачи FunPay: ${statsData.failed}.`);
+    if (statsData.missing_rate) notes.push(`У ${statsData.missing_rate} заказов не было курса TON/₽ — их выручка или себестоимость не учтены.`);
+    $("statsNote").textContent = notes.join(" ");
+    const r = statsData.recent;
+    if (!r.length) { $("sales").innerHTML = '<div class="empty">Продаж через FunPay пока нет</div>'; return; }
+    $("sales").innerHTML = `<table><thead><tr><th>Когда</th><th>Заказ</th><th class="hide-sm">Покупатель</th><th>Кому</th><th class="r">★</th><th class="r">Выручка</th><th class="r">Себест.</th><th class="r">Прибыль</th></tr></thead><tbody>` +
+      r.map((o) => {
+        const dt = new Date(o.at * 1000);
+        const when = dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) + " " + dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+        const oid = String(o.order_id).replace(/^fp-/, "");
+        const pr = o.profit_rub == null ? "—" : `<span class="${+o.profit_rub >= 0 ? "pos" : "neg"}">${rub(o.profit_rub)}</span>`;
+        return `<tr><td>${when}</td><td class="id"><a href="https://funpay.com/orders/${encodeURIComponent(oid)}/" target="_blank" rel="noopener" style="color:inherit">#${esc(oid)}</a></td>
+          <td class="hide-sm">${esc(o.buyer || "—")}</td><td>@${esc(o.username)}</td><td class="r">${fmt(o.stars)}</td>
+          <td class="r" title="${esc(o.revenue)} ${esc(o.currency)}">${rub(o.revenue_rub)}</td><td class="r" title="${esc(o.price_ton)} TON">${rub(o.cost_rub)}</td><td class="r">${pr}</td></tr>`;
+      }).join("") + "</tbody></table>";
+  } catch (e) { if (e.message !== "401") $("sales").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+// ---------- лоты FunPay ----------
+async function loadLots() {
+  try {
+    const p = await api("/funpay/lots");
+    const info = p.stars_affordable == null ? "баланс/цена недоступны" : `сейчас TON хватает на ★ ${fmt(p.stars_affordable)}`;
+    $("lotsHint").dataset.base = $("lotsHint").dataset.base || $("lotsHint").textContent;
+    $("lotsHint").textContent = $("lotsHint").dataset.base + " " + info + (p.fragment_ok ? "." : ", сессия Fragment не авторизована — лоты будут выключены.");
+    if (!p.lots.length) { $("lots").innerHTML = '<div class="empty">Плагин ещё не присылал лоты</div>'; return; }
+    $("lots").innerHTML = `<table><thead><tr><th>Лот</th><th class="r">Цена</th><th>★ за 1 шт.</th><th>Мин. шт.</th><th>Выдача</th><th>Автоакт.</th><th>Сейчас</th><th>Нужно</th><th></th></tr></thead><tbody>` +
+      p.lots.map((l) => {
+        const now = l.active == null ? '<span class="tag">?</span>' : l.active ? '<span class="tag on">вкл</span>' : '<span class="tag off">выкл</span>';
+        const want = l.want_active == null ? '<span class="tag">—</span>' : l.want_active ? '<span class="tag on">вкл</span>' : '<span class="tag off">выкл</span>';
+        return `<tr data-id="${esc(l.lot_id)}"><td class="t"><a href="https://funpay.com/lots/offer?id=${encodeURIComponent(l.lot_id)}" target="_blank" rel="noopener" style="color:inherit">${esc(l.title || l.lot_id)}</a><br><small style="color:var(--muted)">${esc(l.subcategory)}</small></td>
+          <td class="r">${l.price == null ? "—" : fmt(l.price, 2) + " " + esc(l.currency)}</td>
+          <td><input class="num" type="number" min="1" data-f="stars_per_unit" value="${l.stars_per_unit}"></td>
+          <td><input class="num" type="number" min="1" data-f="min_units" value="${l.min_units}" style="width:70px"></td>
+          <td><input type="checkbox" data-f="auto_delivery" ${l.auto_delivery ? "checked" : ""}></td>
+          <td><input type="checkbox" data-f="auto_activate" ${l.auto_activate ? "checked" : ""}></td>
+          <td>${now}</td><td title="${esc(l.reason)}">${want}</td>
+          <td><button class="link sm" data-del title="Забыть лот (плагин добавит его снова при синхронизации)">✕</button></td></tr>`;
+      }).join("") + "</tbody></table>";
+  } catch (e) { if (e.message !== "401") $("lots").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+$("lots").addEventListener("change", async (e) => {
+  const el = e.target, f = el.dataset.f, tr = el.closest("tr"); if (!f || !tr) return;
+  const body = { [f]: el.type === "checkbox" ? el.checked : +el.value };
+  try { await api("/funpay/lots/" + encodeURIComponent(tr.dataset.id), { method: "PATCH", body }); loadLots(); }
+  catch (err) { alert(err.message); loadLots(); }
+});
+$("lots").addEventListener("click", async (e) => {
+  if (!e.target.closest("[data-del]")) return;
+  const tr = e.target.closest("tr"); if (!confirm("Убрать лот из списка?")) return;
+  try { await api("/funpay/lots/" + encodeURIComponent(tr.dataset.id), { method: "DELETE" }); loadLots(); } catch (err) { alert(err.message); }
+});
+$("lotsReload").onclick = loadLots;
+
+function boot() { loadBalance(); loadSession(); loadOrders(); loadStats(); loadLots(); }
 if (!token) showLogin(); else { api("/balance").then(() => boot()).catch((e) => { if (e.message !== "401") boot(); }); }
 </script>
 </body>
